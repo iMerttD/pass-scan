@@ -175,6 +175,10 @@ docker compose up --build
 
 ## Known Limitations
 
+Extraction cannot guarantee complete or correct results for every photo. Unreadable, missing, or conflicting fields require operator review; validate accuracy on representative passport layouts before relying on automated results.
+
+The visual reader scans the full identity page, supports inline labels and values, joins adjacent name fragments within columns, and rejects invalid calendar dates. Fragmented MRZ rows are reassembled before checksum validation. Reconciled visual fallback values populate the response as well as field evidence, and missing visual-only fields trigger review.
+
 1. **Non-Standard Unofficial IDs:** Non-ICAO compliant domestic ID cards that lack Doc 9303 standard MRZ zones will rely exclusively on visual OCR heuristics.
 2. **Extreme Physical Damage / Tear:** If the bottom 25% MRZ zone is physically ripped or obscured by opaque tape, checksum validation cannot be performed and operator review is required.
 3. **TD1 / TD2 Documents:** Only the TD3 (2 x 44) passport MRZ is parsed. ICAO mandates TD3 for passport booklets worldwide, but TD1 (3 x 30) identity cards and TD2 (2 x 36) passport cards fall back to visual OCR only.

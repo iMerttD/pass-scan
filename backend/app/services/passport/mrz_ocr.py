@@ -42,6 +42,29 @@ def clean_mrz_ocr_text(text: str) -> str:
     return cleaned
 
 
+def _is_plausible_td3_line1(raw_line: str) -> bool:
+    """Reject page-heading text before it can masquerade as an MRZ name line."""
+    if len(raw_line) < 28 or raw_line[0] not in _TD3_LINE1_TYPE_CHARS:
+        return False
+
+    candidate = raw_line[:44]
+    if any(char.isdigit() for char in candidate):
+        return False
+
+    issuing_state = candidate[2:5]
+    if not (issuing_state.isalpha() or issuing_state == "D<<"):
+        return False
+
+    name_field = candidate[5:]
+    if "<<" not in name_field:
+        return False
+
+    surname, given_names = name_field.split("<<", 1)
+    surname_letters = surname.replace("<", "")
+    given_letters = given_names.replace("<", "")
+    return bool(surname_letters and given_letters and surname_letters.isalpha() and given_letters.isalpha())
+
+
 def _create_mrz_preprocessing_variants(crop_bgr: np.ndarray) -> List[Tuple[str, np.ndarray]]:
     """
     Generate 8 preprocessing variants optimized for OCR-B font recognition on MRZ strips.
@@ -182,11 +205,9 @@ def extract_and_parse_mrz(mrz_crop: np.ndarray) -> Optional[Dict[str, Any]]:
                 h_orig = mrz_crop.shape[0]
                 h_var = variant_img.shape[0]
                 ratio = h_var / max(1, h_orig)
-                mid_orig = mrz_lines[0].shape[0]
-                mid_var = int(mid_orig * ratio)
                 variant_lines = [
-                    variant_img[0:mid_var, :],
-                    variant_img[mid_var:, :]
+                    cv2.resize(line, (0, 0), fx=ratio, fy=ratio, interpolation=cv2.INTER_CUBIC)
+                    for line in mrz_lines
                 ]
             
             # OCR each line
@@ -224,10 +245,24 @@ def extract_and_parse_mrz(mrz_crop: np.ndarray) -> Optional[Dict[str, Any]]:
         
         # Candidate MRZ lines: should be relatively long and contain '<' or typical MRZ length
         candidate_lines: List[Tuple[str, float]] = []
+        rows: List[List[OCRResult]] = []
         for res in sorted_results:
-            cleaned = clean_mrz_ocr_text(res.text)
-            if len(cleaned) >= 28:  # TD3 line is 44, allow partial if joined
-                candidate_lines.append((cleaned, res.confidence))
+            top = min(point[1] for point in res.box)
+            bottom = max(point[1] for point in res.box)
+            for row in rows:
+                anchor = row[0]
+                row_top = min(point[1] for point in anchor.box)
+                row_bottom = max(point[1] for point in anchor.box)
+                if min(bottom, row_bottom) - max(top, row_top) > 0.5 * min(bottom - top, row_bottom - row_top):
+                    row.append(res)
+                    break
+            else:
+                rows.append([res])
+        for row in rows:
+            row.sort(key=lambda item: min(point[0] for point in item.box))
+            cleaned = clean_mrz_ocr_text("".join(item.text for item in row))
+            if len(cleaned) >= 28:
+                candidate_lines.append((cleaned, sum(item.confidence for item in row) / len(row)))
 
         # Look for two adjacent candidate lines representing TD3
         if len(candidate_lines) >= 2:
@@ -266,13 +301,11 @@ def _try_parse_mrz_pair(
     Attempt to parse and repair a pair of MRZ line candidates.
     Returns (parsed_dict, checksum_score) or None if structurally invalid.
     """
-    # Structural check for TD3 line 1. The document-type letter is commonly
-    # misread by OCR, so a line that carries the '<<' name separator is accepted
-    # regardless of its first character; the checksums decide the winner anyway.
-    if raw_l1:
-        type_ok = raw_l1[0] in _TD3_LINE1_TYPE_CHARS
-        if not type_ok and "<<" not in raw_l1:
-            return None
+    # TD3 has no checksum for the name line. Without a strict structural gate,
+    # unrelated page labels can be paired with a checksum-valid second line and
+    # then leak into surname/given-name fields as if they came from the MRZ.
+    if not _is_plausible_td3_line1(raw_l1):
+        return None
     
     try:
         rep_l1, rep_l2, corrections = repair_td3_mrz_lines(raw_l1, raw_l2)

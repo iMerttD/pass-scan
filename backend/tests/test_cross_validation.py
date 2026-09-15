@@ -69,3 +69,29 @@ def test_plausibility_date_warning():
 
     assert review_required is True
     assert any("Plausibility" in w for w in warnings)
+
+
+def test_visual_fallback_updates_response_models():
+    holder = HolderInfo()
+    passport = PassportData()
+    fields = {key: {"value": value, "confidence": 0.95} for key, value in {
+        "surname": "SMITH", "given_names": "ANNA", "date_of_birth": "1995-04-15",
+        "sex": "F", "nationality": "GBR", "passport_number": "123456789",
+        "date_of_expiry": "2030-04-15",
+    }.items()}
+    evidence, _, review = cross_validate_all_fields(
+        DocumentInfo(), holder, passport, MRZData(), fields, QualityData())
+    assert holder.surname == evidence["surname"].value == "SMITH"
+    assert holder.given_names == "ANNA"
+    assert holder.date_of_birth == "1995-04-15"
+    assert holder.sex == "F"
+    assert holder.nationality == "GBR"
+    assert passport.passport_number == "123456789"
+    assert passport.expiry_date == "2030-04-15"
+    assert review is True
+
+
+def test_visual_confidence_review_status_consistent():
+    evidence, _ = reconcile_field("place_of_birth", None, "ANKARA", None, base_visual_conf=0.75)
+    assert evidence.status == "NEEDS REVIEW"
+    assert evidence.review_required is True

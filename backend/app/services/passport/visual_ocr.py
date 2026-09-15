@@ -134,8 +134,7 @@ MULTILINGUAL_LABEL_MAP: Dict[str, List[str]] = {
 
 # Regex patterns for field validation
 FIELD_VALIDATION_PATTERNS: Dict[str, str] = {
-    "passport_number": r"^[A-Z]{0,2}\d{6,9}[A-Z0-9]{0,2}$",
-    "nationality": r"^[A-ZÀ-ÖÙ-Ý\s/]{2,40}$",
+    "passport_number": r"^(?=[A-Z0-9]{6,12}$)(?=.*\d)[A-Z0-9]+$",
     "sex": r"^[MFXmfx]$",
 }
 
@@ -148,7 +147,7 @@ MONTH_MAP = {
     "HAZ": 6, "TEM": 7, "AĞU": 8, "AGU": 8, "EYL": 9,
     "EKI": 10, "EKİ": 10, "KAS": 11, "ARA": 12,
     # French
-    "FÉV": 2, "FEV": 2, "AVR": 4, "MAI": 5, "JUI": 6,
+    "FÉV": 2, "FEV": 2, "AVR": 4, "MAI": 5, "JUIN": 6, "JUIL": 7, "JUILLET": 7,
     "AOÛ": 8, "AOU": 8, "DÉC": 12,
     # German
     "MÄR": 3, "MRZ": 3, "OKT": 10, "DEZ": 12,
@@ -182,7 +181,7 @@ def parse_visual_date(text: str) -> Optional[str]:
     cleaned = text.strip()
     
     # 1. Check DD.MM.YYYY or DD/MM/YYYY or DD-MM-YYYY
-    m = re.search(r"\b(\d{1,2})[\.\/\-](\d{1,2})[\.\/\-](\d{4})\b", cleaned)
+    m = re.search(r"\b(\d{1,2})[. /\-]+(\d{1,2})[. /\-]+(\d{4})\b", cleaned)
     if m:
         d, m_val, y = int(m.group(1)), int(m.group(2)), int(m.group(3))
         try:
@@ -200,13 +199,13 @@ def parse_visual_date(text: str) -> Optional[str]:
             pass
 
     # 3. Check text month like '15 APR 1995' or '15 APR / AVR 95'
-    m = re.search(r"\b(\d{1,2})\s+([A-ZÇĞİÖŞÜÄÉÈÊ]{3,4})[\s/]*(?:[A-ZÇĞİÖŞÜÄÉÈÊ]{3,4}\s*)?(\d{2,4})\b", cleaned.upper())
+    m = re.search(r"\b(\d{1,2})\s+([^\W\d_]{3,})[\s/]*(?:[^\W\d_]{3,}\s*)?(\d{2}|\d{4})\b", cleaned.upper())
     if m:
         d = int(m.group(1))
-        month_str = m.group(2)[:3]
+        month_str = m.group(2)
         year_raw = int(m.group(3))
         y = year_raw if year_raw > 100 else (2000 + year_raw if year_raw < 50 else 1900 + year_raw)
-        m_val = MONTH_MAP.get(month_str)
+        m_val = MONTH_MAP.get(month_str) or MONTH_MAP.get(month_str[:3])
         if m_val:
             try:
                 return datetime.date(y, m_val, d).isoformat()
@@ -249,7 +248,10 @@ def _validate_field_value(field_key: str, value: str) -> bool:
     
     # Date fields: check if parseable
     if "date" in field_key:
-        return parse_visual_date(value) is not None or bool(re.search(r"\d{2}", value))
+        return parse_visual_date(value) is not None
+
+    if field_key == "nationality":
+        return 2 <= len(value) <= 60 and all(char.isalpha() or char in " /-()." for char in value)
     
     # Name fields: should contain letters
     if field_key in ("surname", "given_names"):
@@ -336,14 +338,14 @@ def _concatenate_adjacent_boxes(
         if abs(item_y_center - line_y_center) < line_height * 0.6:
             gap = ix1 - current_right
             # Must be close to the right (within 2x line height gap)
-            if 0 <= gap <= line_height * 2.0:
+            if gap >= 0:
                 right_items.append((ix1, item, (ix1, iy1, ix2, iy2)))
 
     right_items.sort(key=lambda x: x[0])
 
     for _, item, (ix1, iy1, ix2, iy2) in right_items:
         gap = ix1 - current_right
-        if gap <= line_height * 2.0:
+        if 0 <= gap <= line_height * 2.0:
             text_parts.append(item.text.strip())
             confidences.append(item.confidence)
             current_right = ix2
@@ -359,11 +361,10 @@ def extract_visual_zone_fields(image_bgr: np.ndarray) -> Dict[str, Dict[str, Any
     """
     Extract visible zone fields using spatial proximity and multilingual label anchors.
     Uses relative spatial thresholds that adapt to document dimensions.
-    Processes the top ~75% of the passport identity page (above MRZ).
+    Scans the whole identity page and excludes recognized MRZ text.
     """
     h, w = image_bgr.shape[:2]
-    # Crop to visual zone only (exclude bottom MRZ region)
-    visual_crop_h = int(h * 0.72)
+    visual_crop_h = h
     visual_zone = image_bgr[0:visual_crop_h, 0:w]
 
     engine = get_ocr_engine()
@@ -371,30 +372,55 @@ def extract_visual_zone_fields(image_bgr: np.ndarray) -> Dict[str, Dict[str, Any
 
     extracted_fields: Dict[str, Dict[str, Any]] = {}
 
-    # Helper to check if text matches a label category
+    label_patterns = sorted(
+        ((key, label) for key, labels in MULTILINGUAL_LABEL_MAP.items() for label in labels),
+        key=lambda entry: len(entry[1]), reverse=True,
+    )
+
+    def label_matches(text: str):
+        matches = []
+        for key, label in label_patterns:
+            for match in re.finditer(rf"(?<!\w){re.escape(label)}(?!\w)", text, re.IGNORECASE):
+                if not any(match.start() < end and match.end() > start for start, end, _ in matches):
+                    matches.append((match.start(), match.end(), key))
+        return sorted(matches)
+
     def match_label_key(text_lower: str) -> Optional[str]:
-        cleaned = re.sub(r"[^\w\s/]", " ", text_lower)
-        cleaned = " ".join(cleaned.split()).strip()
-        if len(cleaned) < 2:
-            return None
-        for field_key, labels in MULTILINGUAL_LABEL_MAP.items():
-            for lbl in labels:
-                # Whole-word match only. Plain substring matching makes short
-                # labels ("ime", "nem", "nome") fire inside unrelated words.
-                if re.search(rf"(?<!\w){re.escape(lbl)}(?!\w)", cleaned):
-                    return field_key
-        return None
+        matches = label_matches(text_lower)
+        return matches[0][2] if matches else None
+
+    def normalize_value(key: str, value: str) -> str:
+        value = value.strip(" :./-\t")
+        if "date" in key:
+            return parse_visual_date(value) or ""
+        if key == "passport_number":
+            return value.replace(" ", "").upper()
+        if key == "sex":
+            tokens = re.split(r"[\s/]+", value.upper())
+            sexes = {"M": "M", "MALE": "M", "ERKEK": "M", "H": "M", "HOMME": "M",
+                     "F": "F", "FEMALE": "F", "KADIN": "F", "W": "F", "FEMME": "F", "X": "X"}
+            resolved = {sexes[token] for token in tokens if token in sexes}
+            return resolved.pop() if len(resolved) == 1 else ""
+        return value
 
     # Identify label boxes vs candidate value boxes
     label_items: List[Tuple[str, OCRResult, Tuple[int, int, int, int]]] = []
     other_items: List[Tuple[OCRResult, Tuple[int, int, int, int]]] = []
 
     for item in ocr_results:
+        if "<<" in item.text or len(item.text.replace(" ", "")) >= 40 and "<" in item.text:
+            continue
         bounds = get_box_bounds(item.box)
         text_lower = item.text.lower()
         matched_key = match_label_key(text_lower)
         if matched_key:
             label_items.append((matched_key, item, bounds))
+            matches = label_matches(item.text)
+            for index, (_, end, key) in enumerate(matches):
+                next_start = matches[index + 1][0] if index + 1 < len(matches) else len(item.text)
+                value = normalize_value(key, item.text[end:next_start])
+                if value and _validate_field_value(key, value):
+                    extracted_fields[key] = {"value": value, "confidence": item.confidence, "box": item.box}
         else:
             other_items.append((item, bounds))
 
@@ -413,8 +439,16 @@ def extract_visual_zone_fields(image_bgr: np.ndarray) -> Dict[str, Dict[str, Any
                 val_bounds = get_box_bounds(best_val_item.box)
                 
                 # Try concatenating adjacent boxes for multi-word values
+                bounded_items = [
+                    (item, bounds) for item, bounds in other_items
+                    if not any(
+                        other_key != field_key and val_bounds[0] < other_bounds[0] <= bounds[0]
+                        and abs(other_bounds[1] - lbl_bounds[1]) < max(1, lbl_bounds[3] - lbl_bounds[1])
+                        for other_key, _, other_bounds in label_items
+                    )
+                ]
                 val_text, val_conf = _concatenate_adjacent_boxes(
-                    best_val_item, val_bounds, other_items, w
+                    best_val_item, val_bounds, bounded_items, w
                 )
                 val_text = val_text.strip()
 
@@ -424,16 +458,10 @@ def extract_visual_zone_fields(image_bgr: np.ndarray) -> Dict[str, Dict[str, Any
                     if parsed_dt:
                         val_text = parsed_dt
 
-                # Sex normalization
-                if field_key == "sex":
-                    s_up = val_text.upper()
-                    if "M" in s_up or "ERKEK" in s_up or "H" == s_up or "HOMME" in s_up:
-                        val_text = "M"
-                    elif "F" in s_up or "KADIN" in s_up or "W" == s_up or "FEMME" in s_up:
-                        val_text = "F"
+                val_text = normalize_value(field_key, val_text)
 
                 # Validate the extracted value
-                if _validate_field_value(field_key, val_text):
+                if val_text and _validate_field_value(field_key, val_text):
                     extracted_fields[field_key] = {
                         "value": val_text,
                         "confidence": val_conf,

@@ -148,7 +148,7 @@ def reconcile_field(
             visual_value=visual_val,
             checksum_valid=None,
             sources_match=False,
-            review_required=base_visual_conf < 0.70,
+            review_required=base_visual_conf < 0.80,
             status="VERIFIED" if base_visual_conf >= 0.80 else "NEEDS REVIEW",
             note="Extracted from visual passport zone."
         ), None
@@ -281,6 +281,15 @@ def cross_validate_all_fields(
     evidence["issuing_authority"] = ev
     passport_data.issuing_authority = ev.value
     if w: warnings.append(w)
+
+    holder_info.surname = evidence["surname"].value
+    holder_info.given_names = evidence["given_names"].value
+    holder_info.date_of_birth = evidence["date_of_birth"].value
+    holder_info.sex = evidence["sex"].value
+    holder_info.nationality = evidence["nationality"].value
+    passport_data.passport_number = evidence["passport_number"].value
+    passport_data.expiry_date = evidence["expiry_date"].value
+    review_required = review_required or any(field.review_required for field in evidence.values())
 
     # Plausibility checks on dates
     if holder_info.date_of_birth and passport_data.expiry_date:
