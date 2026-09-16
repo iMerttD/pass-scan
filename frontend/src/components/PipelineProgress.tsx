@@ -1,5 +1,5 @@
 import React from "react";
-import { Loader2, CheckCircle2, ShieldAlert, Cpu } from "lucide-react";
+import { Loader2 } from "lucide-react";
 
 interface PipelineProgressProps {
   currentStage?: string;
@@ -23,10 +23,10 @@ export const PipelineProgress: React.FC<PipelineProgressProps> = () => {
       </div>
 
       <h3 className="text-base font-semibold text-zinc-100 mb-1">
-        Local Neural Pipeline Running
+        Document examination in progress
       </h3>
       <p className="text-xs text-zinc-400 mb-6">
-        Processing document on local ONNX Runtime without external cloud connections
+        Validating and extracting the document on this workstation
       </p>
 
       <div className="space-y-2 text-left">

@@ -12,7 +12,7 @@ export const QualityBanner: React.FC<QualityBannerProps> = ({ quality }) => {
 
   return (
     <div
-      className={`w-full rounded-xl border p-4 transition-all ${
+      className={`state-transition w-full rounded-xl border p-4 ${
         isSevere
           ? "bg-rose-950/30 border-rose-900/60 text-rose-200"
           : hasWarnings
@@ -47,7 +47,7 @@ export const QualityBanner: React.FC<QualityBannerProps> = ({ quality }) => {
         {/* Quality Metric Badges */}
         <div className="flex flex-wrap items-center gap-2 font-mono text-[11px]">
           {/* Sharpness */}
-          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-zinc-900/80 border border-zinc-800 text-zinc-300">
+          <div className="flex items-center gap-1.5 border-l border-zinc-800 px-2.5 py-1 text-zinc-300">
             <Gauge className="w-3.5 h-3.5 text-zinc-400" />
             <span>Sharpness:</span>
             <span className={quality.blur_score > 0.5 ? "text-emerald-400 font-bold" : "text-amber-400 font-bold"}>
@@ -56,7 +56,7 @@ export const QualityBanner: React.FC<QualityBannerProps> = ({ quality }) => {
           </div>
 
           {/* Glare */}
-          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-zinc-900/80 border border-zinc-800 text-zinc-300">
+          <div className="flex items-center gap-1.5 border-l border-zinc-800 px-2.5 py-1 text-zinc-300">
             <SunMedium className="w-3.5 h-3.5 text-zinc-400" />
             <span>Glare:</span>
             <span className={quality.glare_detected ? "text-rose-400 font-bold" : "text-emerald-400 font-bold"}>
@@ -65,7 +65,7 @@ export const QualityBanner: React.FC<QualityBannerProps> = ({ quality }) => {
           </div>
 
           {/* Resolution */}
-          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-zinc-900/80 border border-zinc-800 text-zinc-300">
+          <div className="flex items-center gap-1.5 border-l border-zinc-800 px-2.5 py-1 text-zinc-300">
             <Scan className="w-3.5 h-3.5 text-zinc-400" />
             <span>Dimensions:</span>
             <span className="text-zinc-200">

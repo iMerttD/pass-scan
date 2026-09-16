@@ -26,10 +26,13 @@ import {
   ShieldCheck,
   AlertCircle,
   CheckCircle2,
-  Lock,
   ArrowRight,
   RotateCcw,
-  Sparkles,
+  FileInput,
+  ScanLine,
+  ClipboardCheck,
+  ChevronRight,
+  Circle,
 } from "lucide-react";
 
 export default function PassportApp() {
@@ -39,6 +42,7 @@ export default function PassportApp() {
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
   const [isSubmittingConfirm, setIsSubmittingConfirm] = useState(false);
   const [confirmedSuccess, setConfirmedSuccess] = useState(false);
+  const [reviewTab, setReviewTab] = useState<"identity" | "evidence">("identity");
   const [backendStatus, setBackendStatus] = useState<{
     status: string;
     engine: string;
@@ -64,6 +68,7 @@ export default function PassportApp() {
       setHolderState({ ...analysis.holder });
       setPassportState({ ...analysis.passport });
       setConfirmedSuccess(false);
+      setReviewTab("identity");
     }
   }, [analysis]);
 
@@ -135,16 +140,47 @@ export default function PassportApp() {
   };
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col font-sans selection:bg-emerald-500 selection:text-zinc-950">
-      <Header onReset={handleReset} hasActiveSession={!!analysis} />
-
-      <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 space-y-6">
+    <div className="institutional-app office-workspace">
+      <Header onReset={handleReset} hasActiveSession={!!analysis && !isLoading} />
+      <div className="workspace-layout">
+        <aside className="workflow-sidebar" aria-label="Examination progress">
+          <div className="sidebar-label">WORKSPACE</div>
+          <div className="sidebar-current"><ScanLine size={18} /><span>Passport examination</span></div>
+          <div className="sidebar-label sidebar-label--steps">EXAMINATION WORKFLOW</div>
+          <ol className="workflow-steps">
+            {[
+              { title: "Document intake", detail: "Upload an identity page", icon: FileInput },
+              { title: "Review & verify", detail: "Inspect extracted information", icon: ScanLine },
+              { title: "Confirmation", detail: "Finalize the document record", icon: ClipboardCheck },
+            ].map((step, index) => {
+              const currentStep = confirmedSuccess ? 2 : analysis || isLoading ? 1 : 0;
+              const complete = index < currentStep || confirmedSuccess;
+              return <li key={step.title} className={index === currentStep ? "is-current" : complete ? "is-complete" : ""} aria-current={index === currentStep ? "step" : undefined}>
+                <span className="step-marker">{complete ? <CheckCircle2 size={17} /> : <step.icon size={17} />}</span>
+                <div><strong>{step.title}</strong><small>{step.detail}</small></div>
+              </li>;
+            })}
+          </ol>
+          <div className="sidebar-bottom">
+            <div className="service-status"><Circle size={8} fill="currentColor" /><span>{!backendStatus ? "Checking service…" : backendStatus.status === "offline" ? "Service unavailable" : "Service connected"}</span></div>
+            <p>Operator review console</p>
+            <span>ICAO Doc 9303</span>
+          </div>
+        </aside>
+      <div className="workspace-content">
+      <main id="main-content" className="workspace-main" tabIndex={-1}>
+        <div className="workspace-breadcrumb"><span>Workspace</span><ChevronRight size={12} /><span>Passport examination</span></div>
+        <div className="workspace-title">
+          <div><h1>{confirmedSuccess ? "Examination completed" : isLoading ? "Analyzing document" : analysis ? "Review examination" : "New examination"}</h1>
+          <p>{analysis ? "Compare the document with the extracted information before confirming." : "Submit a passport identity page for extraction and verification."}</p></div>
+          <span className="examination-status">{confirmedSuccess ? "Completed" : isLoading ? "Processing" : analysis ? "Awaiting review" : "Ready for intake"}</span>
+        </div>
         {/* Backend Connectivity Status Bar */}
         {backendStatus && backendStatus.status === "offline" && (
           <div className="flex items-center gap-2 p-3 rounded-lg bg-rose-950/40 border border-rose-800 text-rose-300 text-xs">
             <AlertCircle className="w-4 h-4 shrink-0" />
             <span>
-              Backend server is not running on <strong>http://127.0.0.1:8000</strong>. Please start the FastAPI backend service.
+              The document service is unavailable. Start the local backend service to process documents.
             </span>
           </div>
         )}
@@ -194,7 +230,7 @@ export default function PassportApp() {
 
         {/* Initial Upload State */}
         {!analysis && !isLoading && (
-          <div className="py-8">
+          <div>
             <UploadZone
               onFileSelected={handleFileUpload}
               onSampleSelected={handleSampleSelect}
@@ -205,42 +241,48 @@ export default function PassportApp() {
 
         {/* Results & Human Review Console */}
         {analysis && !isLoading && (
-          <div className="space-y-6 animate-in fade-in duration-200">
+          <div className="space-y-6">
+            <div className="case-summary"><div><span>DOCUMENT</span><strong>{passportState.passport_number || "Passport"}</strong></div><div><span>DOCUMENT HOLDER</span><strong>{[holderState.given_names, holderState.surname].filter(Boolean).join(" ") || "Not identified"}</strong></div><div><span>EXTRACTION CONFIDENCE</span><strong>{(analysis.confidence.overall * 100).toFixed(1)}%</strong></div></div>
             {/* Top Quality Gate Status Banner */}
             <QualityBanner quality={analysis.quality} />
+            <div className="review-navigation" aria-label="Review sections">
+              <button type="button" aria-pressed={reviewTab === "identity"} onClick={() => setReviewTab("identity")}>Identity review</button>
+              <button type="button" aria-pressed={reviewTab === "evidence"} onClick={() => setReviewTab("evidence")}>Technical evidence</button>
+            </div>
+            <div hidden={reviewTab !== "evidence"} className="evidence-layout"><MRZInspector mrz={analysis.mrz} /><PortraitCard portrait={analysis.portrait} /></div>
 
             {/* Main Review Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            <div hidden={reviewTab !== "identity"} className="review-layout">
               {/* Left Column: Visual Evidences (Portrait, Document Canvas, MRZ) */}
-              <div className="lg:col-span-6 space-y-6">
+              <div className="review-document">
+                <div className="review-document__sticky">
                 {/* Portrait Crop */}
-                <PortraitCard portrait={analysis.portrait} />
+                <div className="review-pane-heading"><span className="section-eyebrow">SOURCE DOCUMENT</span><h2>Visual inspection</h2><p>Compare the source with the extracted fields.</p></div>
 
                 {/* Original Document Viewer */}
                 <DocumentViewer
                   normalizedImageUrl={analysis.normalized_image_url}
                   annotatedImageUrl={analysis.annotated_image_url}
                 />
+                </div>
 
                 {/* ICAO Doc 9303 MRZ Engine Breakdown */}
-                <MRZInspector mrz={analysis.mrz} />
               </div>
 
               {/* Right Column: Extracted Fields Review & Inline Editing */}
-              <div className="lg:col-span-6 flex flex-col justify-between space-y-6 rounded-2xl border border-zinc-800 bg-zinc-900/40 p-5 shadow-lg">
+              <div className="review-fields">
                 <div className="space-y-4">
-                  <div className="flex items-center justify-between pb-3 border-b border-zinc-800">
+                  <div className="review-pane-heading">
                     <div>
-                      <h3 className="text-sm font-semibold text-zinc-100">
-                        Identity Fields Review
-                      </h3>
+                      <span className="section-eyebrow">EXTRACTED INFORMATION</span>
+                      <h2>Identity details</h2>
                       <p className="text-xs text-zinc-400">
                         Review, edit, or adjust uncertain fields before final confirmation
                       </p>
                     </div>
 
                     {/* Overall Confidence Pill */}
-                    <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-zinc-950 border border-zinc-700 font-mono text-xs">
+                    <div className="hidden">
                       <span className="text-zinc-400">Overall:</span>
                       <span
                         className={
@@ -267,29 +309,37 @@ export default function PassportApp() {
                 </div>
 
                 {/* Bottom Action Footer */}
-                <div className="pt-4 border-t border-zinc-800/80 flex flex-col sm:flex-row items-center justify-between gap-3">
+              </div>
+            </div>
+                <div className="review-actions">
+                  <span>{confirmedSuccess ? "The record has been finalized." : "Verify all fields before finalizing this record."}</span>
+                  <div className="review-actions__buttons">
                   <button
                     onClick={handleReset}
-                    className="w-full sm:w-auto flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs font-medium transition-colors"
+                    className="office-button office-button--secondary"
                   >
                     <RotateCcw className="w-3.5 h-3.5" />
-                    <span>Discard & Reset</span>
+                    <span>Discard</span>
                   </button>
 
                   <button
                     onClick={() => setIsConfirmModalOpen(true)}
-                    className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-2.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-zinc-950 text-xs font-bold shadow-lg shadow-emerald-500/20 transition-all cursor-pointer"
+                    disabled={confirmedSuccess}
+                    className="office-button office-button--primary"
                   >
                     <ShieldCheck className="w-4 h-4" />
-                    <span>Confirm & Finalize Document</span>
+                    <span>{confirmedSuccess ? "Confirmed" : "Confirm record"}</span>
                     <ArrowRight className="w-4 h-4" />
                   </button>
                 </div>
-              </div>
-            </div>
+                </div>
           </div>
         )}
       </main>
+
+      <footer className="workspace-footer"><span>PassportOffice / Document examination</span><span>Operator confirmation required</span></footer>
+      </div>
+      </div>
 
       {/* Confirmation & Export Modal */}
       {analysis && (

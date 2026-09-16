@@ -1,5 +1,5 @@
 import React, { useState, useRef } from "react";
-import { UploadCloud, FileText, Image as ImageIcon, Sparkles, AlertCircle, ShieldAlert } from "lucide-react";
+import { UploadCloud, FileText, ArrowUpRight, Check, AlertCircle } from "lucide-react";
 
 const ACCEPTED_MIME_TYPES = [
   "image/jpeg",
@@ -26,7 +26,7 @@ export const UploadZone: React.FC<UploadZoneProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFiles = (files: FileList | null) => {
-    if (!files || files.length === 0) return;
+    if (isLoading || !files || files.length === 0) return;
     const file = files[0];
     setErrorMsg(null);
 
@@ -53,139 +53,55 @@ export const UploadZone: React.FC<UploadZoneProps> = ({
   };
 
   return (
-    <div className="w-full max-w-4xl mx-auto space-y-6">
-      {/* Upload Box */}
-      <div
-        onDragOver={(e) => {
-          e.preventDefault();
-          setIsDragOver(true);
-        }}
-        onDragLeave={() => setIsDragOver(false)}
-        onDrop={(e) => {
-          e.preventDefault();
-          setIsDragOver(false);
-          handleFiles(e.dataTransfer.files);
-        }}
-        onClick={() => !isLoading && fileInputRef.current?.click()}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " ") {
-            e.preventDefault();
-            if (!isLoading) fileInputRef.current?.click();
-          }
-        }}
-        role="button"
-        tabIndex={isLoading ? -1 : 0}
-        aria-label="Upload passport identity page. Accepted formats: JPG, PNG, WEBP, HEIC, PDF. Maximum 15 megabytes."
-        aria-disabled={isLoading}
-        className={`relative focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950 flex flex-col items-center justify-center p-10 rounded-2xl border-2 border-dashed transition-all cursor-pointer ${
-          isDragOver
-            ? "border-emerald-500 bg-emerald-950/20 scale-[1.01]"
-            : "border-zinc-700 hover:border-zinc-500 bg-zinc-900/50 hover:bg-zinc-900/80"
-        } ${isLoading ? "opacity-60 pointer-events-none" : ""}`}
-      >
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/jpeg,image/png,image/webp,image/heic,image/heif,application/pdf,.heic,.heif"
-          className="hidden"
-          onChange={(e) => handleFiles(e.target.files)}
-        />
-
-        <div className="h-16 w-16 mb-4 rounded-2xl bg-zinc-800/90 border border-zinc-700 flex items-center justify-center text-zinc-300 shadow-inner">
-          <UploadCloud className="w-8 h-8 text-emerald-400" />
+    <div className="intake-layout">
+      <section className="intake-document" aria-labelledby="intake-heading">
+        <div className="section-heading"><div><span className="section-eyebrow">DOCUMENT INTAKE</span><h2 id="intake-heading">Add a passport</h2></div><span className="format-tag">01 / 03</span></div>
+        <p className="section-description">Upload the identity page to begin a new examination.</p>
+        <div
+          className={`upload-surface ${isDragOver ? "is-dragging" : ""}`}
+          onDragOver={(event) => { event.preventDefault(); if (!isLoading) setIsDragOver(true); }}
+          onDragLeave={() => setIsDragOver(false)}
+          onDrop={(event) => { event.preventDefault(); setIsDragOver(false); handleFiles(event.dataTransfer.files); }}
+        >
+          <div className="upload-symbol"><UploadCloud size={30} strokeWidth={1.4} /></div>
+          <h3>Drop your document here</h3>
+          <p>A clear photo or scan of the full identity page.</p>
+          <button className="office-button office-button--primary" type="button" disabled={isLoading} onClick={() => fileInputRef.current?.click()}>
+            <FileText size={16} />Select document
+          </button>
+          <span className="upload-limit">JPG, PNG, WEBP, HEIC or PDF · up to 15 MB</span>
+          <input ref={fileInputRef} type="file" disabled={isLoading} aria-label="Select passport document" accept="image/jpeg,image/png,image/webp,image/heic,image/heif,application/pdf,.heic,.heif" className="hidden" onChange={(event) => { handleFiles(event.target.files); event.target.value = ""; }} />
         </div>
-
-        <h3 className="text-lg font-medium text-zinc-100 mb-1">
-          Upload Passport Identity Page
-        </h3>
-        <p className="text-xs text-zinc-400 max-w-md text-center mb-4 leading-relaxed">
-          Drag & drop a high-resolution photo or PDF scan. Image is analyzed entirely on your local CPU/GPU with strict privacy guarantees.
-        </p>
-
-        <div className="flex items-center gap-2 text-[11px] font-mono text-zinc-400 bg-zinc-950/80 px-3 py-1.5 rounded-lg border border-zinc-800">
-          <span className="text-zinc-500">FORMATS:</span>
-          <span className="text-emerald-400 font-semibold">JPG</span>
-          <span>•</span>
-          <span className="text-emerald-400 font-semibold">PNG</span>
-          <span>•</span>
-          <span className="text-emerald-400 font-semibold">WEBP</span>
-          <span>•</span>
-          <span className="text-emerald-400 font-semibold">HEIC</span>
-          <span>•</span>
-          <span className="text-emerald-400 font-semibold">PDF</span>
-          <span>(Max 15MB)</span>
-        </div>
-
-        {errorMsg && (
-          <div role="alert" className="mt-4 flex items-center gap-2 text-xs text-rose-400 bg-rose-950/40 px-3 py-1.5 rounded-md border border-rose-900">
-            <AlertCircle className="w-4 h-4 shrink-0" />
-            <span>{errorMsg}</span>
+        {errorMsg && <div role="alert" className="intake-error"><AlertCircle size={18} /><span>{errorMsg}</span></div>}
+        <div className="intake-note"><FileText size={16} /><span>One document per examination. Review extracted information before confirming.</span></div>
+        <section className="sample-library" aria-labelledby="samples-heading">
+          <div className="sample-library__heading"><h3 id="samples-heading">Sample documents</h3><span>Training records · no personal data</span></div>
+          <div className="sample-list">
+            {[
+              { variant: "clean", name: "Standard passport", detail: "Valid TD3 specimen", tag: "STANDARD" },
+              { variant: "skewed", name: "Rotated document", detail: "Automatic alignment check", tag: "ALIGNMENT" },
+              { variant: "blurry", name: "Blurred photograph", detail: "Image sharpness check", tag: "QUALITY" },
+              { variant: "glare", name: "Flash reflection", detail: "Glare detection check", tag: "QUALITY" },
+            ].map((sample) => (
+              <button key={sample.variant} type="button" disabled={isLoading} onClick={() => onSampleSelected(sample.variant)} className="sample-row">
+                <FileText size={18} /><span className="sample-name">{sample.name}<small>{sample.detail}</small></span><span className="sample-tag">{sample.tag}</span><ArrowUpRight size={16} />
+              </button>
+            ))}
           </div>
-        )}
-      </div>
-
-      {/* Synthetic Demo Specimens */}
-      <div className="bg-zinc-900/40 rounded-xl p-4 border border-zinc-800/80">
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-emerald-400" />
-            <span className="text-xs font-semibold text-zinc-200 uppercase tracking-wider">
-              Synthetic Test Specimens (No Real Personal Data Needed)
-            </span>
-          </div>
-          <span className="text-[11px] text-zinc-400 font-mono">1-Click Test</span>
-        </div>
-
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-          <button
-            type="button"
-            disabled={isLoading}
-            onClick={() => onSampleSelected("clean")}
-            className="flex flex-col text-left p-2.5 rounded-lg bg-zinc-800/60 hover:bg-zinc-800 border border-zinc-700/60 hover:border-emerald-500/50 transition-all group"
-          >
-            <span className="text-xs font-medium text-zinc-200 group-hover:text-emerald-400 flex items-center gap-1.5">
-              <span>Standard Passport</span>
-            </span>
-            <span className="text-[10px] text-zinc-400 mt-0.5">Valid TD3 ICAO Specimen</span>
-          </button>
-
-          <button
-            type="button"
-            disabled={isLoading}
-            onClick={() => onSampleSelected("skewed")}
-            className="flex flex-col text-left p-2.5 rounded-lg bg-zinc-800/60 hover:bg-zinc-800 border border-zinc-700/60 hover:border-emerald-500/50 transition-all group"
-          >
-            <span className="text-xs font-medium text-zinc-200 group-hover:text-emerald-400 flex items-center gap-1.5">
-              <span>Skewed / Rotated</span>
-            </span>
-            <span className="text-[10px] text-zinc-400 mt-0.5">Tests Auto-Deskew</span>
-          </button>
-
-          <button
-            type="button"
-            disabled={isLoading}
-            onClick={() => onSampleSelected("blurry")}
-            className="flex flex-col text-left p-2.5 rounded-lg bg-zinc-800/60 hover:bg-zinc-800 border border-zinc-700/60 hover:border-amber-500/50 transition-all group"
-          >
-            <span className="text-xs font-medium text-zinc-200 group-hover:text-amber-400 flex items-center gap-1.5">
-              <span>Blurry Photo</span>
-            </span>
-            <span className="text-[10px] text-zinc-400 mt-0.5">Tests Blur Quality Gate</span>
-          </button>
-
-          <button
-            type="button"
-            disabled={isLoading}
-            onClick={() => onSampleSelected("glare")}
-            className="flex flex-col text-left p-2.5 rounded-lg bg-zinc-800/60 hover:bg-zinc-800 border border-zinc-700/60 hover:border-rose-500/50 transition-all group"
-          >
-            <span className="text-xs font-medium text-zinc-200 group-hover:text-rose-400 flex items-center gap-1.5">
-              <span>Flash Glare</span>
-            </span>
-            <span className="text-[10px] text-zinc-400 mt-0.5">Tests Specular Glare Gate</span>
-          </button>
-        </div>
-      </div>
+        </section>
+      </section>
+      <aside className="intake-guide" aria-label="Document preparation guide">
+        <span className="section-eyebrow">BEFORE YOU BEGIN</span>
+        <h2>Prepare your document</h2>
+        <p>A complete, readable image makes the examination more reliable.</p>
+        <ol className="preparation-list">
+          <li><Check size={16} /><div><strong>Include the full identity page</strong><p>Keep all four edges and both machine-readable lines visible.</p></div></li>
+          <li><Check size={16} /><div><strong>Use even lighting</strong><p>Avoid reflections, flash glare and shadows over the text.</p></div></li>
+          <li><Check size={16} /><div><strong>Keep text in focus</strong><p>Place the document flat and hold the camera directly above it.</p></div></li>
+        </ol>
+        <div className="process-summary"><span className="section-eyebrow">WHAT HAPPENS NEXT</span><h3>You remain in control.</h3><p>The document is analyzed, its fields are extracted, and any uncertainty is flagged for your review. A record is finalized only after your confirmation.</p></div>
+        <div className="reference-note"><span>DOCUMENT STANDARD</span><strong>ICAO Doc 9303</strong><small>Machine-readable travel documents</small></div>
+      </aside>
     </div>
   );
 };

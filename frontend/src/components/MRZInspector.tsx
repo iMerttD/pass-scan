@@ -1,6 +1,6 @@
 import React from "react";
 import { MRZData } from "@/lib/types";
-import { CheckCircle2, XCircle, FileCode, Check, AlertTriangle } from "lucide-react";
+import { CheckCircle2, XCircle, FileCode } from "lucide-react";
 
 interface MRZInspectorProps {
   mrz: MRZData;

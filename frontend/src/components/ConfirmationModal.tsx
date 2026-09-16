@@ -55,8 +55,13 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
 
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-150">
-      <div className="w-full max-w-2xl rounded-2xl bg-zinc-900 border border-zinc-700 shadow-2xl p-6 space-y-5 text-zinc-100">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="confirmation-title"
+        className="w-full max-w-2xl rounded-2xl bg-zinc-900 border border-zinc-700 shadow-2xl p-6 space-y-5 text-zinc-100"
+      >
         {/* Header */}
         <div className="flex items-center justify-between pb-3 border-b border-zinc-800">
           <div className="flex items-center gap-2.5">
@@ -64,7 +69,7 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
               <ShieldCheck className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="text-sm font-semibold text-zinc-100">
+              <h3 id="confirmation-title" className="text-sm font-semibold text-zinc-100">
                 Final Verification & Confirmation
               </h3>
               <p className="text-xs text-zinc-400">
@@ -74,6 +79,7 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
           </div>
           <button
             onClick={onClose}
+            aria-label="Close confirmation dialog"
             className="p-1.5 rounded-lg hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200 transition-colors"
           >
             <X className="w-4 h-4" />
@@ -120,8 +126,12 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
             placeholder="e.g. Identity verified by operator against physical passport."
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
+            aria-describedby="reviewer-notes-helper"
             className="w-full px-3 py-2 text-xs rounded bg-zinc-950 border border-zinc-700 text-zinc-200 focus:outline-none focus:border-emerald-500"
           />
+          <p id="reviewer-notes-helper" className="field-helper mt-1 text-[10px] text-zinc-500">
+            Optional note stored with the local verification record.
+          </p>
         </div>
 
         {/* Checkbox */}
@@ -166,7 +176,7 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
             <button
               disabled={!confirmedCheckbox || isSubmitting}
               onClick={() => onConfirm(notes)}
-              className={`flex items-center justify-center gap-2 px-5 py-2 rounded text-xs font-semibold transition-all ${
+              className={`state-transition flex items-center justify-center gap-2 px-5 py-2 rounded text-xs font-semibold ${
                 confirmedCheckbox && !isSubmitting
                   ? "bg-emerald-500 hover:bg-emerald-400 text-zinc-950 shadow-lg shadow-emerald-500/20 cursor-pointer"
                   : "bg-zinc-800 text-zinc-500 cursor-not-allowed border border-zinc-700"

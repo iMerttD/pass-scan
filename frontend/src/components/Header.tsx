@@ -1,5 +1,5 @@
 import React from "react";
-import { ShieldCheck, Lock, Cpu, RotateCcw } from "lucide-react";
+import { ScanLine, RotateCcw } from "lucide-react";
 
 interface HeaderProps {
   onReset?: () => void;
@@ -8,47 +8,33 @@ interface HeaderProps {
 
 export const Header: React.FC<HeaderProps> = ({ onReset, hasActiveSession }) => {
   return (
-    <header className="sticky top-0 z-40 w-full border-b border-zinc-800 bg-zinc-950/80 backdrop-blur-md px-6 py-3.5">
-      <div className="max-w-7xl mx-auto flex items-center justify-between">
+    <header className="workspace-header">
+      <a className="skip-link" href="#main-content">Skip to workspace</a>
+      <div className="workspace-brand"><ScanLine size={24} /><div><strong>Passport<span>Office</span></strong><small>DOCUMENT VERIFICATION</small></div></div>
+      <div className="workspace-header__content">
         <div className="flex items-center gap-3">
-          <div className="h-9 w-9 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shadow-sm shadow-emerald-950">
-            <ShieldCheck className="w-5 h-5" />
-          </div>
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-base font-semibold text-zinc-100 tracking-tight">
-                PASSPORT<span className="text-emerald-400">.LOCAL</span>
-              </h1>
-              <span className="text-[10px] uppercase font-mono px-2 py-0.5 rounded bg-zinc-800 text-zinc-400 border border-zinc-700">
-                v1.0.0
+              <span className="text-sm sm:text-base font-bold text-zinc-100 tracking-tight">
+                Examination workspace
               </span>
             </div>
-            <p className="text-xs text-zinc-400">
-              On-Premise ICAO Doc 9303 Identity Extraction & Validation Engine
+            <p className="hidden text-xs text-zinc-400 sm:block">
+              Passport intake and operator review
             </p>
           </div>
         </div>
 
         <div className="flex items-center gap-3">
-          {/* Security & Privacy Badges */}
-          <div className="hidden md:flex items-center gap-2 text-xs font-mono">
-            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-950/40 border border-emerald-800/50 text-emerald-300">
-              <Lock className="w-3.5 h-3.5 text-emerald-400" />
-              <span>100% On-Premise (No Cloud Calls)</span>
-            </div>
-            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-zinc-900 border border-zinc-800 text-zinc-400">
-              <Cpu className="w-3.5 h-3.5 text-zinc-300" />
-              <span>Local PP-OCR Engine</span>
-            </div>
-          </div>
 
           {hasActiveSession && onReset && (
             <button
               onClick={onReset}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 transition-colors border border-zinc-700"
+              aria-label="Start a new examination"
+              className="office-button office-button--secondary"
             >
               <RotateCcw className="w-3.5 h-3.5" />
-              <span>Analyze Another</span>
+              <span className="hidden sm:inline">New Examination</span>
             </button>
           )}
         </div>

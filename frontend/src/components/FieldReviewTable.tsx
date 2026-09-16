@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { FieldEvidence, DocumentInfo, HolderInfo, PassportData } from "@/lib/types";
-import { CheckCircle, AlertTriangle, AlertCircle, Edit3, ChevronDown, ChevronUp, ShieldCheck } from "lucide-react";
+import { CheckCircle, AlertTriangle, AlertCircle, Edit3, ChevronDown, ChevronUp } from "lucide-react";
 
 interface FieldReviewTableProps {
   document: DocumentInfo;
@@ -71,10 +71,10 @@ export const FieldReviewTable: React.FC<FieldReviewTableProps> = ({
     return (
       <div
         key={fieldKey}
-        className={`rounded-lg border transition-all ${
+        className={`field-record state-transition border-b ${
           isReviewReq
             ? "border-rose-900/50 bg-rose-950/10"
-            : "border-zinc-800/80 bg-zinc-900/40 hover:bg-zinc-900/70"
+            : "border-zinc-800/80 hover:bg-zinc-900/70"
         }`}
       >
         <div className="p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -101,6 +101,8 @@ export const FieldReviewTable: React.FC<FieldReviewTableProps> = ({
                 value={value || ""}
                 placeholder={isReviewReq ? "Field not detected — enter manually" : ""}
                 onChange={(e) => onFieldChange(section, fieldKey, e.target.value)}
+                aria-invalid={isReviewReq}
+                aria-describedby={`${fieldKey}-helper`}
                 className={`w-full px-3 py-1.5 text-xs font-mono rounded bg-zinc-950/90 border text-zinc-100 focus:outline-none transition-colors ${
                   isReviewReq
                     ? "border-rose-700/80 focus:border-rose-500 placeholder-rose-400/50"
@@ -108,6 +110,9 @@ export const FieldReviewTable: React.FC<FieldReviewTableProps> = ({
                 }`}
               />
               <Edit3 className="w-3.5 h-3.5 text-zinc-500 absolute right-2.5 top-2 pointer-events-none" />
+              <span id={`${fieldKey}-helper`} className={`field-helper mt-1 block text-[10px] ${isReviewReq ? "text-rose-400" : "text-zinc-500"}`}>
+                {isReviewReq ? "Review required — confirm or enter the value." : "Verified evidence is available for inspection."}
+              </span>
             </div>
 
             {/* Evidence Drawer Toggle */}

@@ -30,8 +30,8 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
   return (
     <div className="rounded-xl border border-zinc-800 bg-zinc-900/60 overflow-hidden flex flex-col">
       {/* Control Toolbar */}
-      <div className="flex items-center justify-between px-4 py-2.5 bg-zinc-950/80 border-b border-zinc-800 text-xs">
-        <div className="flex items-center gap-2">
+      <div className="flex flex-col items-start justify-between gap-3 px-4 py-2.5 bg-zinc-950/80 border-b border-zinc-800 text-xs sm:flex-row sm:items-center">
+        <div className="flex w-full flex-wrap items-center justify-between gap-2 sm:w-auto sm:justify-start">
           <Eye className="w-4 h-4 text-zinc-400" />
           <span className="font-semibold text-zinc-200">Document Canvas</span>
           <span className="text-[10px] font-mono text-zinc-500 px-1.5 py-0.5 rounded bg-zinc-900 border border-zinc-800">
@@ -88,9 +88,8 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
           style={{
             transform: `scale(${zoom})`,
             transformOrigin: "center center",
-            transition: "transform 0.15s ease-out",
           }}
-          className="max-w-full max-h-full"
+          className="document-zoom max-w-full max-h-full"
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
@@ -103,7 +102,7 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
 
       {/* Legend */}
       {showAnnotations && annotatedImageUrl && (
-        <div className="px-4 py-2 bg-zinc-950/90 border-t border-zinc-800/80 flex items-center gap-4 text-[11px] font-mono text-zinc-400">
+        <div className="px-4 py-2 bg-zinc-950/90 border-t border-zinc-800/80 flex flex-wrap items-center gap-4 text-[11px] font-mono text-zinc-400">
           <span className="flex items-center gap-1.5">
             <span className="w-2.5 h-2.5 rounded-sm bg-emerald-500 inline-block" />
             <span>ICAO MRZ Zone</span>

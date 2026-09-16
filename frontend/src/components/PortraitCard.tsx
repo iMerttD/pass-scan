@@ -54,7 +54,7 @@ export const PortraitCard: React.FC<PortraitCardProps> = ({ portrait }) => {
             <span>Authentic Extraction Only</span>
           </div>
           <p className="text-[11px] text-zinc-400 leading-relaxed">
-            No generative AI or facial alterations applied. Isolated via spatial prior geometry and Haar/DNN face localization.
+            The portrait is isolated from the submitted document. The source image is retained without facial alteration.
           </p>
 
           {portrait.bbox && (
